@@ -4,6 +4,10 @@ const path = require('node:path');
 const { Client, Events, GatewayIntentBits, Collection } = require('discord.js');
 const { token } = require('./config.json');
 
+// Set the FFMPEG_PATH environment variable to the path of the ffmpeg binary
+// This ensures that @discordjs/voice can find ffmpeg even if it's not in the system PATH
+process.env.FFMPEG_PATH = require('ffmpeg-static');
+
 // Create a new client instance
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
