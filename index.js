@@ -2,7 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Events, GatewayIntentBits, Collection } = require('discord.js');
-const { token } = require('./config.json');
+const token = process.env.DISCORD_AUTH;
 
 // Set the FFMPEG_PATH environment variable to the path of the ffmpeg binary
 // This ensures that @discordjs/voice can find ffmpeg even if it's not in the system PATH
