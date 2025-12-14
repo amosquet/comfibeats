@@ -1,0 +1,18 @@
+{
+    "guildId_here": {
+        "guildName": "guildName_here",
+        "roles": {
+            "modRole": "modRoleID_here"
+        },
+        "channels": {
+            "logChannel": "logChannelID_here",
+            "defaultVoiceChannel": "defaultVoiceChannelID_here"
+        },
+        "settings": {
+            "defaultPlaylist": "example",
+            "shuffle": true,
+            "repeat": true,
+            "autoVC": true
+        }
+    }
+}
