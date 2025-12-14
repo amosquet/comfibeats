@@ -9,7 +9,7 @@ const token = process.env.DISCORD_AUTH;
 process.env.FFMPEG_PATH = require('ffmpeg-static');
 
 // Create a new client instance
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
 
 client.commands = new Collection();
 const foldersPath = path.join(__dirname, 'commands');
