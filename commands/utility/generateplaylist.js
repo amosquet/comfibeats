@@ -9,10 +9,17 @@ module.exports = {
 		.addStringOption(option =>
 			option.setName('name')
 				.setDescription('The name for the playlist file (without .json)')
-				.setRequired(true)),
+				.setRequired(true))
+		.addStringOption(option =>
+			option.setName('folder')
+				.setDescription('Optional: subfolder inside audio directory')
+				.setRequired(false)),
 	async execute(interaction) {
 		const playlistName = interaction.options.getString('name');
-		const audioPath = path.join(__dirname, '../../audio');
+		const folder = interaction.options.getString('folder');
+		const audioPath = folder 
+			? path.join(__dirname, '../../audio', folder)
+			: path.join(__dirname, '../../audio');
 		const playlistPath = path.join(__dirname, '../../playlists', `${playlistName}.json`);
 
 		if (!fs.existsSync(audioPath)) {
@@ -24,19 +31,36 @@ module.exports = {
 		}
 
 		try {
-			const files = fs.readdirSync(audioPath);
-			const audioFiles = files.filter(file => {
-				const ext = path.extname(file).toLowerCase();
-				return ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.opus'].includes(ext);
-			});
+			const audioFiles = [];
+			const baseAudioPath = path.join(__dirname, '../../audio');
+
+			const scanDirectory = (dir) => {
+				const items = fs.readdirSync(dir, { withFileTypes: true });
+				
+				for (const item of items) {
+					const fullPath = path.join(dir, item.name);
+					
+					if (item.isDirectory()) {
+						scanDirectory(fullPath);
+					} else if (item.isFile()) {
+						const ext = path.extname(item.name).toLowerCase();
+						if (['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.opus'].includes(ext)) {
+							const relativePath = path.relative(baseAudioPath, fullPath);
+							audioFiles.push(relativePath);
+						}
+					}
+				}
+			};
+
+			scanDirectory(audioPath);
 
 			if (audioFiles.length === 0) {
-				return interaction.reply('No audio files found in the audio folder!');
+				return interaction.reply('No audio files found in the specified folder!');
 			}
 
 			fs.writeFileSync(playlistPath, JSON.stringify(audioFiles, null, 4));
 
-			await interaction.reply(`Created playlist \`${playlistName}.json\` with ${audioFiles.length} audio files.`);
+			await interaction.reply(`Created playlist \`${playlistName}.json\` with ${audioFiles.length} audio files${folder ? ` from \`${folder}\`` : ''}.`);
 		} catch (error) {
 			console.error(error);
 			await interaction.reply('There was an error generating the playlist.');
