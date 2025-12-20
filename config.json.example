@@ -1,3 +1,4 @@
 {
-	"guildId": "guildId goes here"
+	"guildId": "guildId goes here",
+  "vcId": "vcId goes here"
 }
