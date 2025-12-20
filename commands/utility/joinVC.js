@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
+const { joinVoiceChannel } = require('@discordjs/voice');
 
 // config file
 const config = require('../../config.json');
@@ -12,8 +13,21 @@ module.exports = {
             .setDescription('The ID of the voice channel')
             .setRequired(false)),
     async execute(interaction) {
-      const channelId = interaction.options.getString('channelid');
+      var channelId = interaction.options.getString('channelid');      
+      // set channel id from config if none specified
+      channelId = channelId ? channelId : config.vcId; 
 
-      
+      try {
+        const connection = joinVoiceChannel({
+          channelId: channelId,
+          guildId: interaction.guild.id,
+          adapterCreator: interaction.guild.voiceAdapterCreator
+        });
+
+        await interaction.reply(`Joining voice channel ${channelId}`);
+      } catch (err) {
+        console.log(`wuh oh - error D: !`, err);
+        await interaction.reply(`There was an error joining channel ${channelId}`);
+      }
     }
 }
