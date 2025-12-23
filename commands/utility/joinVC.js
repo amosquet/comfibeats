@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const { joinVoiceChannel } = require('@discordjs/voice');
 
 // config file
-const config = require('../../config.json');
+const config = require('../../guild_settings.json');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -15,7 +15,7 @@ module.exports = {
     async execute(interaction) {
       var channelId = interaction.options.getString('channelid');      
       // set channel id from config if none specified
-      channelId = channelId ? channelId : config.vcId; 
+      channelId = channelId ? channelId : config[interaction.guild.id].settings.vcId; 
 
       try {
         const connection = joinVoiceChannel({

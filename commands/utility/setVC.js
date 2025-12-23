@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const fs = require('fs');
 
 // config file
-const config = require('../../config.json');
+const config = require('../../guild_settings.json');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -16,11 +16,11 @@ module.exports = {
       const channelId = interaction.options.getString('channelid');
       
       // set and write channel/vc id to config
-      config.vcId = channelId
+      config[interaction.guild.id].settings.vcId = channelId
       const json = JSON.stringify(config);
 
       try {
-        fs.writeFileSync('./config.json', json);
+        fs.writeFileSync('./guild_settings.json', json);
         await interaction.reply(`Voice channel set to ID: \`${channelId}\``);
       } catch (err) {
         console.log(`error writing config :< !`, err);
