@@ -52,14 +52,27 @@ module.exports = {
 		const player = createAudioPlayer();
 		connection.subscribe(player);
 
-		let currentIndex = 0;
+		if (!interaction.client.musicQueue) {
+			interaction.client.musicQueue = new Map();
+		}
+
+		const queue = {
+			songs: playlist,
+			index: 0,
+			player: player,
+			connection: connection
+		};
+		interaction.client.musicQueue.set(interaction.guild.id, queue);
 
 		const playNext = () => {
-			if (currentIndex >= playlist.length) {
-				currentIndex = 0; // Loop the playlist
+			const currentQueue = interaction.client.musicQueue.get(interaction.guild.id);
+			if (!currentQueue) return;
+
+			if (currentQueue.index >= currentQueue.songs.length) {
+				currentQueue.index = 0; // Loop the playlist
 			}
 
-			const filename = playlist[currentIndex];
+			const filename = currentQueue.songs[currentQueue.index];
 			const filePath = path.join(__dirname, '../../audio', filename);
 
 			if (fs.existsSync(filePath)) {
@@ -67,27 +80,34 @@ module.exports = {
 				player.play(resource);
 			} else {
 				console.log(`File not found: ${filename}, skipping.`);
-				currentIndex++;
+				currentQueue.index++;
 				// Avoid infinite recursion if all files are missing
-				if (currentIndex < playlist.length) {
+				if (currentQueue.index < currentQueue.songs.length) {
                     playNext();
                 } else {
                     console.log('No valid files found in playlist.');
                     connection.destroy();
+					interaction.client.musicQueue.delete(interaction.guild.id);
                 }
 				return;
 			}
 		};
 
 		player.on(AudioPlayerStatus.Idle, () => {
-			currentIndex++;
-			playNext();
+			const currentQueue = interaction.client.musicQueue.get(interaction.guild.id);
+			if (currentQueue) {
+				currentQueue.index++;
+				playNext();
+			}
 		});
 
 		player.on('error', error => {
 			console.error(`Error: ${error.message}`);
-			currentIndex++;
-			playNext();
+			const currentQueue = interaction.client.musicQueue.get(interaction.guild.id);
+			if (currentQueue) {
+				currentQueue.index++;
+				playNext();
+			}
 		});
 
 		playNext();

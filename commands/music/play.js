@@ -15,9 +15,9 @@ module.exports = {
 		const filename = interaction.options.getString('filename');
 		const channel = interaction.member.voice.channel;
 
-		if (!channel) {
-			return interaction.reply('You need to be in a voice channel to play music!');
-		}
+		// if (!channel) {
+		// 	return interaction.reply('You need to be in a voice channel to play music!');
+		// }
 
 		const filePath = path.join(__dirname, '../../audio', filename);
 
