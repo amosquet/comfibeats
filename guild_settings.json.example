@@ -12,7 +12,8 @@
             "defaultPlaylist": "example",
             "shuffle": true,
             "repeat": true,
-            "autoVC": true
+            "autoVC": true,
+            "autoPlay: true"
         }
     }
 }
