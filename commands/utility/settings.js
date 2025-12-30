@@ -55,7 +55,7 @@ module.exports = {
 
       // format to look nicer in disc md
       let settingsJson = JSON.stringify(config[guildId].settings);
-      settingsJson = settingsJson.replaceAll(',"', ',\n  "').replaceAll('{"', '{\n  "').replaceAll('"}', '"\n}').replaceAll(':', ': '); 
+      settingsJson = settingsJson.replaceAll(',"', ',\n  "').replaceAll('{"', '{\n  "').replaceAll('}', '\n}').replaceAll(':', ': '); 
       try {
         fs.writeFileSync('./guild_settings.json', json);
         await interaction.reply(`server settings: \`\`\`json\n${settingsJson}\`\`\``);
@@ -94,6 +94,7 @@ function setOption(config, guildId, key, value) {
     case "autoPlay":
       if (typeof value !== 'boolean')
         return [false, "'autoplay' must be a boolean"]
+      break;
     default:
       throw new Error(`unrecognized setting ${key}`);
   }
