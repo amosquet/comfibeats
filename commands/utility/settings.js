@@ -52,10 +52,13 @@ module.exports = {
 
       // save settings
       const json = JSON.stringify(config);
-      const settingsJson = JSON.stringify(config[guildId].settings)
+
+      // format to look nicer in disc md
+      let settingsJson = JSON.stringify(config[guildId].settings);
+      settingsJson = settingsJson.replaceAll(',"', ',\n  "').replaceAll('{"', '{\n  "').replaceAll('"}', '"\n}').replaceAll(':', ': '); 
       try {
         fs.writeFileSync('./guild_settings.json', json);
-        await interaction.reply(`server settings: \`${settingsJson}\``);
+        await interaction.reply(`server settings: \`\`\`json\n${settingsJson}\`\`\``);
       } catch (err) {
         console.log(`error writing config :< !`, err);
       }
