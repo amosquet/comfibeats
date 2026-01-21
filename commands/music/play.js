@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
 const path = require('node:path');
 const fs = require('node:fs');
+const config = require('../../guild_settings.json');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -14,6 +15,8 @@ module.exports = {
 	async execute(interaction) {
 		const filename = interaction.options.getString('filename');
 		const channel = interaction.member.voice.channel;
+		const guildId = interaction.guild.id;
+
 
 		// if (!channel) {
 		// 	return interaction.reply('You need to be in a voice channel to play music!');
@@ -33,13 +36,20 @@ module.exports = {
 			});
 
 			const player = createAudioPlayer();
-			const resource = createAudioResource(filePath);
+			let resource = createAudioResource(filePath);
 
 			player.play(resource);
 			connection.subscribe(player);
 
 			player.on(AudioPlayerStatus.Playing, () => {
 				console.log('The audio player has started playing!');
+			});
+
+			player.on(AudioPlayerStatus.Idle, () => { // loop song if repeating 
+				if (config[guildId].settings.repeat) {
+					resource = createAudioResource(filePath); // redefine to reset
+					player.play(resource);
+				}
 			});
 
 			player.on('error', error => {
