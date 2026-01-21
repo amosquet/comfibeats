@@ -47,7 +47,7 @@ module.exports = {
 
 			player.on(AudioPlayerStatus.Idle, () => { // loop song if repeating 
 				if (config[guildId].settings.repeat) {
-					resource = createAudioResource(filePath); // redfine to reset
+					resource = createAudioResource(filePath); // redefine to reset
 					player.play(resource);
 				}
 			});
