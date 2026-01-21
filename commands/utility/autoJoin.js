@@ -13,7 +13,7 @@ try {
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('autoJoin')
+        .setName('autojoin')
         .setDescription('Toggles auto-join for the default voice channel.'),
     async execute(interaction) {
         const guildId = interaction.guild.id;

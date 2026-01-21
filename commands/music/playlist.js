@@ -48,7 +48,7 @@ module.exports = {
 	startMusicPlayback
 };
 
-const startMusicPlayback = (interaction, channel, playlist) => {
+function startMusicPlayback(interaction, channel, playlist) {
 	const connection = joinVoiceChannel({
 		channelId: channel.id,
 		guildId: interaction.guild.id,

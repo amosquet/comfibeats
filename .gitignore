@@ -35,3 +35,13 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 config.json
 guild_settings.json
+
+# ignore "247 comfi beats" in audio directory
+audio/247\ comfi\ beats/
+audio/247\ comfi\ beats/**/*
+audio/ano
+audio/ano/**/*
+audio/BTSensei
+audio/BTSensei/**/*
+audio/release
+audio/release/**/*
