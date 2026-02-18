@@ -55,16 +55,49 @@ module.exports = {
       return interaction.reply("Playlist is empty or invalid.");
     }
 
+    // Check shuffle setting
+    const shuffleEnabled = isShuffleEnabled(interaction.guild.id);
+    if (shuffleEnabled) {
+      shuffleArray(playlist);
+    }
+
     await interaction.reply(
-      `Starting playlist: \`${playlistName}\` with ${playlist.length} songs. (Looping enabled)`,
+      `Starting playlist: \`${playlistName}\` with ${playlist.length} songs. (Looping enabled${
+        shuffleEnabled ? ", Shuffle enabled" : ""
+      })`,
     );
 
-    startMusicPlayback(interaction, channel, playlist);
+    startMusicPlayback(interaction, channel, playlist, shuffleEnabled);
   },
   startMusicPlayback,
 };
 
-function startMusicPlayback(interaction, channel, playlist) {
+function isShuffleEnabled(guildId) {
+  const configPath = path.join(__dirname, "../../guild_settings.json");
+  if (!fs.existsSync(configPath)) return false;
+  try {
+    const settings = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    return settings[guildId]?.settings?.shuffle === true;
+  } catch (e) {
+    console.error("Error reading settings for shuffle check:", e);
+    return false;
+  }
+}
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+function startMusicPlayback(
+  interaction,
+  channel,
+  playlist,
+  shuffleEnabled = false,
+) {
   const connection = joinVoiceChannel({
     channelId: channel.id,
     guildId: interaction.guild.id,
@@ -83,6 +116,7 @@ function startMusicPlayback(interaction, channel, playlist) {
     index: 0,
     player: player,
     connection: connection,
+    shuffleEnabled: shuffleEnabled, // Store the setting in the queue
   };
   interaction.client.musicQueue.set(interaction.guild.id, queue);
 
@@ -94,6 +128,16 @@ function startMusicPlayback(interaction, channel, playlist) {
 
     if (currentQueue.index >= currentQueue.songs.length) {
       currentQueue.index = 0; // Loop the playlist
+
+      // Re-shuffle if enabled when looping
+      // We check the file again in case settings changed, or rely on the initial passed value?
+      // Based on request "If shuffle is set to true... each time it reaches the end... it should shuffle"
+      // It's safer to check the queue property we set, but let's re-check the file to be dynamic if the user toggled it mid-playlist.
+      const currentShuffleState = isShuffleEnabled(interaction.guild.id);
+      if (currentShuffleState) {
+        shuffleArray(currentQueue.songs);
+        console.log("Playlist looped and reshuffled.");
+      }
     }
 
     const filename = currentQueue.songs[currentQueue.index];
