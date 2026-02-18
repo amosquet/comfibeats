@@ -1,5 +1,9 @@
 # comfibeats
 
+Hello! I got tired of the bot that we were using, that I chose to use, that kept crashing and I didn't want to figure out how it worked, so I made my own.
+Feel free to use this to run your own bot, it works if your system has good resources, idk how to make it more efficient yet. I'll work on it.
+
+
 To install dependencies:
 
 ```bash
