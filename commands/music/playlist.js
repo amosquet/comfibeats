@@ -4,6 +4,8 @@ const {
   createAudioPlayer,
   createAudioResource,
   AudioPlayerStatus,
+  VoiceConnectionStatus,
+  entersState,
 } = require("@discordjs/voice");
 const path = require("node:path");
 const fs = require("node:fs");
@@ -106,6 +108,33 @@ function startMusicPlayback(
 
   const player = createAudioPlayer();
   connection.subscribe(player);
+
+  connection.on("error", (error) => {
+    console.error("Voice Connection Error: ${error.message}");
+  });
+
+  connection.on(VoiceConnectionStatus.Disconnected, async () => {
+    try {
+      // Give the connection 5000 milliseconds (5s) to automatically begin recovering
+      await Promise.race([
+        entersState(connection, VoiceConnectionStatus.Signalling, 5000),
+        entersState(connection, VoiceConnectionStatus.Connecting, 5000),
+      ]);
+
+      console.log(
+        "Transient network drop detected. Connection is recovering...",
+      );
+      // The bot is successfully reconnecting, so we do nothing and let it recover.
+    } catch (error) {
+      // The timeout expired without entering a recovery state. It's a true disconnect.
+      console.log(
+        "Voice connection permanently lost. Destroying connection and clearing queue.",
+      );
+      player.stop();
+      connection.destroy();
+      interaction.client.musicQueue.delete(interaction.guild.id);
+    }
+  });
 
   if (!interaction.client.musicQueue) {
     interaction.client.musicQueue = new Map();
