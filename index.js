@@ -6,12 +6,6 @@ Sentry.init({
   tracesSampleRate: 1.0, //  Capture 100% of the transactions
 });
 
-try {
-  throw new Error("Sentry Bun test");
-} catch (e) {
-  Sentry.captureException(e);
-}
-
 // Require the necessary discord.js classes
 const fs = require("node:fs");
 const path = require("node:path");
