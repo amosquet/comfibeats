@@ -6,6 +6,27 @@ Sentry.init({
   tracesSampleRate: 1.0, //  Capture 100% of the transactions
 });
 
+// Capture unhandled rejections
+process.on("unhandledRejection", (reason) => {
+  Sentry.captureException(reason);
+});
+
+// Capture uncaught exceptions
+process.on("uncaughtException", (error) => {
+  Sentry.captureException(error);
+});
+
+// Capture process warnings (like TimeoutNegativeWarning)
+process.on("warning", (warning) => {
+  Sentry.captureMessage(warning.message, {
+    level: "warning",
+    extra: {
+      name: warning.name,
+      stack: warning.stack,
+    },
+  });
+});
+
 // Require the necessary discord.js classes
 const fs = require("node:fs");
 const path = require("node:path");
@@ -24,6 +45,11 @@ const client = new Client({
 // Capture client errors
 client.on(Events.Error, (error) => {
   Sentry.captureException(error);
+});
+
+// Capture client warnings
+client.on(Events.Warn, (info) => {
+  Sentry.captureMessage(info, { level: "warning" });
 });
 
 client.commands = new Collection();
