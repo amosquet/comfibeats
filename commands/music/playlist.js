@@ -8,7 +8,9 @@ const {
   entersState,
 } = require("@discordjs/voice");
 const path = require("node:path");
-const fs = require("node:fs");
+const fs = require("node:fs/promises");
+const { existsSync } = require("node:fs");
+const { getConfig } = require("../../utils/configManager");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -39,7 +41,7 @@ module.exports = {
 
     const playlistPath = path.join(__dirname, "../../playlists", playlistName);
 
-    if (!fs.existsSync(playlistPath)) {
+    if (!existsSync(playlistPath)) {
       return interaction.reply(
         `Could not find playlist: \`${playlistName}\` in the playlists directory.`,
       );
@@ -47,7 +49,7 @@ module.exports = {
 
     let playlist;
     try {
-      const data = fs.readFileSync(playlistPath, "utf8");
+      const data = await fs.readFile(playlistPath, "utf8");
       playlist = JSON.parse(data);
     } catch (error) {
       return interaction.reply(`Error parsing playlist: ${error.message}`);
@@ -58,7 +60,9 @@ module.exports = {
     }
 
     // Check shuffle setting
-    const shuffleEnabled = isShuffleEnabled(interaction.guild.id);
+    const config = await getConfig();
+    const shuffleEnabled =
+      config[interaction.guild.id]?.settings?.shuffle === true;
     if (shuffleEnabled) {
       shuffleArray(playlist);
     }
@@ -74,18 +78,6 @@ module.exports = {
   startMusicPlayback,
 };
 
-function isShuffleEnabled(guildId) {
-  const configPath = path.join(__dirname, "../../guild_settings.json");
-  if (!fs.existsSync(configPath)) return false;
-  try {
-    const settings = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    return settings[guildId]?.settings?.shuffle === true;
-  } catch (e) {
-    console.error("Error reading settings for shuffle check:", e);
-    return false;
-  }
-}
-
 function shuffleArray(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -100,6 +92,14 @@ function startMusicPlayback(
   playlist,
   shuffleEnabled = false,
 ) {
+  // Stop existing player if it exists
+  const existingQueue = interaction.client.musicQueue?.get(
+    interaction.guild.id,
+  );
+  if (existingQueue) {
+    existingQueue.player.stop();
+  }
+
   const connection = joinVoiceChannel({
     channelId: channel.id,
     guildId: interaction.guild.id,
@@ -110,29 +110,25 @@ function startMusicPlayback(
   connection.subscribe(player);
 
   connection.on("error", (error) => {
-    console.error("Voice Connection Error: ${error.message}");
+    console.error(`Voice Connection Error: ${error.message}`);
   });
 
   connection.on(VoiceConnectionStatus.Disconnected, async () => {
     try {
-      // Give the connection 5000 milliseconds (5s) to automatically begin recovering
       await Promise.race([
         entersState(connection, VoiceConnectionStatus.Signalling, 5000),
         entersState(connection, VoiceConnectionStatus.Connecting, 5000),
       ]);
-
       console.log(
         "Transient network drop detected. Connection is recovering...",
       );
-      // The bot is successfully reconnecting, so we do nothing and let it recover.
     } catch (error) {
-      // The timeout expired without entering a recovery state. It's a true disconnect.
       console.log(
         "Voice connection permanently lost. Destroying connection and clearing queue.",
       );
       player.stop();
       connection.destroy();
-      interaction.client.musicQueue.delete(interaction.guild.id);
+      interaction.client.musicQueue?.delete(interaction.guild.id);
     }
   });
 
@@ -145,25 +141,20 @@ function startMusicPlayback(
     index: 0,
     player: player,
     connection: connection,
-    shuffleEnabled: shuffleEnabled, // Store the setting in the queue
+    shuffleEnabled: shuffleEnabled,
   };
   interaction.client.musicQueue.set(interaction.guild.id, queue);
 
-  const playNext = () => {
+  const playNext = async () => {
     const currentQueue = interaction.client.musicQueue.get(
       interaction.guild.id,
     );
     if (!currentQueue) return;
 
     if (currentQueue.index >= currentQueue.songs.length) {
-      currentQueue.index = 0; // Loop the playlist
-
-      // Re-shuffle if enabled when looping
-      // We check the file again in case settings changed, or rely on the initial passed value?
-      // Based on request "If shuffle is set to true... each time it reaches the end... it should shuffle"
-      // It's safer to check the queue property we set, but let's re-check the file to be dynamic if the user toggled it mid-playlist.
-      const currentShuffleState = isShuffleEnabled(interaction.guild.id);
-      if (currentShuffleState) {
+      currentQueue.index = 0;
+      const config = await getConfig();
+      if (config[interaction.guild.id]?.settings?.shuffle) {
         shuffleArray(currentQueue.songs);
         console.log("Playlist looped and reshuffled.");
       }
@@ -172,21 +163,20 @@ function startMusicPlayback(
     const filename = currentQueue.songs[currentQueue.index];
     const filePath = path.join(__dirname, "../../audio", filename);
 
-    if (fs.existsSync(filePath)) {
+    if (existsSync(filePath)) {
       const resource = createAudioResource(filePath);
       player.play(resource);
     } else {
       console.log(`File not found: ${filename}, skipping.`);
       currentQueue.index++;
-      // Avoid infinite recursion if all files are missing
       if (currentQueue.index < currentQueue.songs.length) {
         playNext();
       } else {
         console.log("No valid files found in playlist.");
+        player.stop();
         connection.destroy();
         interaction.client.musicQueue.delete(interaction.guild.id);
       }
-      return;
     }
   };
 
@@ -201,7 +191,7 @@ function startMusicPlayback(
   });
 
   player.on("error", (error) => {
-    console.error(`Error: ${error.message}`);
+    console.error(`Audio Player Error: ${error.message}`);
     const currentQueue = interaction.client.musicQueue.get(
       interaction.guild.id,
     );
