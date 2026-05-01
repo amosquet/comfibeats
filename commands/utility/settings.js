@@ -36,6 +36,12 @@ module.exports = {
           "boolean: whether to automatically play playlist after joining vc.",
         )
         .setRequired(false),
+    )
+    .addBooleanOption((option) =>
+      option
+        .setName("view")
+        .setDescription("boolean: whether to view the current settings.")
+        .setRequired(false),
     ),
   async execute(interaction) {
     const guildId = interaction.guild.id;
@@ -58,20 +64,27 @@ module.exports = {
     };
 
     // validate and set settings
+    let changed = false;
     for (const [key, value] of Object.entries(settings)) {
       if (value !== null) {
         config[guildId].settings[key] = value;
+        changed = true;
       }
     }
 
     try {
-      await saveConfig(config);
+      if (changed) {
+        await saveConfig(config);
+      }
+
       let settingsJson = JSON.stringify(config[guildId].settings, null, 2);
-      await interaction.reply(
-        `Server settings updated:\n\`\`\`json\n${settingsJson}\n\`\`\``,
-      );
+      let responseMessage = changed
+        ? `Server settings updated:\n\`\`\`json\n${settingsJson}\n\`\`\``
+        : `Current server settings:\n\`\`\`json\n${settingsJson}\n\`\`\``;
+
+      await interaction.reply(responseMessage);
     } catch (err) {
-      await interaction.reply("Error saving settings.");
+      await interaction.reply("Error handling settings.");
     }
   },
 };
