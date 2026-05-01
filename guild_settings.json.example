@@ -5,15 +5,15 @@
             "modRole": "modRoleID_here"
         },
         "channels": {
-            "logChannel": "logChannelID_here",
-            "defaultVoiceChannel": "defaultVoiceChannelID_here"
+            "logChannel": "logChannelID_here"
         },
         "settings": {
             "defaultPlaylist": "example",
             "shuffle": true,
             "repeat": true,
             "autoVC": true,
-            "autoPlay: true"
+            "autoPlay": true,
+            "vcId": "defaultVoiceChannelID_here"
         }
     }
 }
