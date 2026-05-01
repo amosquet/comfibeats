@@ -5,6 +5,7 @@ const { startMusicPlayback } = require("../commands/music/playlist");
 const path = require("node:path");
 const fs = require("node:fs/promises");
 const { existsSync } = require("node:fs");
+const Sentry = require("@sentry/bun");
 
 module.exports = {
   name: Events.ClientReady,
@@ -85,6 +86,7 @@ module.exports = {
                     );
                   }
                 } catch (err) {
+                  Sentry.captureException(err);
                   console.error(
                     `Error parsing auto-play playlist for ${guild.name}:`,
                     err,
@@ -97,6 +99,7 @@ module.exports = {
               }
             }
           } catch (error) {
+            Sentry.captureException(error);
             console.error(
               `Failed to auto-join or auto-play in guild ${guildId}:`,
               error,

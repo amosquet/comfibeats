@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { joinVoiceChannel } = require("@discordjs/voice");
 const { getConfig, saveConfig } = require("../../utils/configManager");
+const Sentry = require("@sentry/bun");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -32,6 +33,7 @@ module.exports = {
     try {
       await saveConfig(config);
     } catch (err) {
+      Sentry.captureException(err);
       console.error("Error saving config:", err);
       return interaction.reply({
         content: "Failed to save settings.",
@@ -53,6 +55,7 @@ module.exports = {
           });
           replyMessage += ` Joining voice channel <#${channelId}>.`;
         } catch (error) {
+          Sentry.captureException(error);
           console.error(error);
           replyMessage += ` Failed to join voice channel.`;
         }

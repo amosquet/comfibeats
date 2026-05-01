@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { getConfig, saveConfig } = require("../../utils/configManager");
+const Sentry = require("@sentry/bun");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -30,6 +31,7 @@ module.exports = {
       await saveConfig(config);
       await interaction.reply(`Voice channel set to ID: \`${channelId}\``);
     } catch (err) {
+      Sentry.captureException(err);
       console.error(`Error saving config:`, err);
       await interaction.reply({
         content: "Failed to save settings.",

@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { getConfig, saveConfig } = require("../../utils/configManager");
+const Sentry = require("@sentry/bun");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -91,6 +92,7 @@ module.exports = {
 
       await interaction.reply(responseMessage);
     } catch (err) {
+      Sentry.captureException(err);
       await interaction.reply("Error handling settings.");
     }
   },
