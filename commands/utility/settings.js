@@ -42,6 +42,12 @@ module.exports = {
         .setName("view")
         .setDescription("boolean: whether to view the current settings.")
         .setRequired(false),
+    )
+    .addStringOption((option) =>
+      option
+        .setName("vcid")
+        .setDescription("String: the default voice channel ID.")
+        .setRequired(false),
     ),
   async execute(interaction) {
     const guildId = interaction.guild.id;
@@ -61,6 +67,7 @@ module.exports = {
       repeat: interaction.options.getBoolean("repeat"),
       autoVC: interaction.options.getBoolean("autovc"),
       autoPlay: interaction.options.getBoolean("autoplay"),
+      vcId: interaction.options.getString("vcid"),
     };
 
     // validate and set settings
