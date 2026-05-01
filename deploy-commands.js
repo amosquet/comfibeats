@@ -1,5 +1,7 @@
 const { REST, Routes } = require('discord.js');
-const { clientId, guildId, token } = require('./config.json');
+// const { guildId } = require('./config.json');
+const token = process.env.DISCORD_AUTH;
+const clientId = process.env.CLIENT_ID;
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -24,6 +26,12 @@ for (const folder of commandFolders) {
 	}
 }
 
+//pull all guild IDs from guild_settings.json
+const guildSettingsPath = path.join(__dirname, 'guild_settings.json');
+const guildSettings = JSON.parse(fs.readFileSync(guildSettingsPath, 'utf8'));
+const guildIds = Object.keys(guildSettings);
+
+
 // Construct and prepare an instance of the REST module
 const rest = new REST().setToken(token);
 
@@ -33,9 +41,10 @@ const rest = new REST().setToken(token);
 		console.log(`Started refreshing ${commands.length} application (/) commands.`);
 
 		// The put method is used to fully refresh all commands in the guild with the current set
-		const data = await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
-
-		console.log(`Successfully reloaded ${data.length} application (/) commands.`);
+		for (const guildId of guildIds) {
+			const data = await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
+			console.log(`Successfully reloaded ${data.length} application (/) commands in guild ${guildId}.`);
+		}
 	} catch (error) {
 		// And of course, make sure you catch and log any errors!
 		console.error(error);
