@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require("discord.js");
 const fs = require("node:fs/promises");
 const { existsSync } = require("node:fs");
 const path = require("node:path");
+const Sentry = require("@sentry/bun");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -90,6 +91,7 @@ module.exports = {
         `Created playlist \`${playlistName}.json\` with ${audioFiles.length} audio files${folder ? ` from \`${folder}\`` : ""}.`,
       );
     } catch (error) {
+      Sentry.captureException(error);
       console.error(error);
       if (interaction.deferred) {
         await interaction.editReply(

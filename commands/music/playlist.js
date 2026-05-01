@@ -11,6 +11,7 @@ const path = require("node:path");
 const fs = require("node:fs/promises");
 const { existsSync } = require("node:fs");
 const { getConfig } = require("../../utils/configManager");
+const Sentry = require("@sentry/bun");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -52,6 +53,7 @@ module.exports = {
       const data = await fs.readFile(playlistPath, "utf8");
       playlist = JSON.parse(data);
     } catch (error) {
+      Sentry.captureException(error);
       return interaction.reply(`Error parsing playlist: ${error.message}`);
     }
 
@@ -110,6 +112,7 @@ function startMusicPlayback(
   connection.subscribe(player);
 
   connection.on("error", (error) => {
+    Sentry.captureException(error);
     console.error(`Voice Connection Error: ${error.message}`);
   });
 
@@ -123,6 +126,7 @@ function startMusicPlayback(
         "Transient network drop detected. Connection is recovering...",
       );
     } catch (error) {
+      Sentry.captureException(error);
       console.log(
         "Voice connection permanently lost. Destroying connection and clearing queue.",
       );
@@ -191,6 +195,7 @@ function startMusicPlayback(
   });
 
   player.on("error", (error) => {
+    Sentry.captureException(error);
     console.error(`Audio Player Error: ${error.message}`);
     const currentQueue = interaction.client.musicQueue.get(
       interaction.guild.id,

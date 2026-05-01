@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { joinVoiceChannel } = require("@discordjs/voice");
 const { getConfig } = require("../../utils/configManager");
+const Sentry = require("@sentry/bun");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -37,6 +38,7 @@ module.exports = {
 
       await interaction.reply(`Joining voice channel <#${channelId}>`);
     } catch (err) {
+      Sentry.captureException(err);
       console.error(`Error joining channel:`, err);
       await interaction.reply(
         `There was an error joining channel ${channelId}`,

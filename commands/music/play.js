@@ -8,6 +8,7 @@ const {
 const path = require("node:path");
 const { existsSync } = require("node:fs");
 const { getConfig } = require("../../utils/configManager");
+const Sentry = require("@sentry/bun");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -76,6 +77,7 @@ module.exports = {
       });
 
       player.on("error", (error) => {
+        Sentry.captureException(error);
         console.error(`Audio Player Error: ${error.message}`);
       });
 
@@ -93,6 +95,7 @@ module.exports = {
       playResource();
       await interaction.reply(`Playing: \`${filename}\``);
     } catch (error) {
+      Sentry.captureException(error);
       console.error(error);
       await interaction.reply("There was an error trying to play that audio.");
     }

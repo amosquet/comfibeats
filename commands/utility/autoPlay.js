@@ -4,6 +4,7 @@ const { existsSync } = require("node:fs");
 const path = require("node:path");
 const { startMusicPlayback } = require("../music/playlist.js");
 const { getConfig } = require("../../utils/configManager");
+const Sentry = require("@sentry/bun");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -34,6 +35,7 @@ module.exports = {
           playlist = JSON.parse(data);
           playlistName = defaultPlaylistName;
         } catch (err) {
+          Sentry.captureException(err);
           console.error("Error parsing default playlist:", err);
         }
       }
@@ -52,6 +54,7 @@ module.exports = {
           );
           playlistName = "All Tracks";
         } catch (err) {
+          Sentry.captureException(err);
           console.error("Error reading audio directory:", err);
         }
       }
