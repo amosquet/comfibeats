@@ -7,7 +7,8 @@ Type=simple
 User=root
 Group=root
 WorkingDirectory=/root/comfibeats
-ExecStart=bun index.js
+Environment="PATH=/root/.bun/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/usr/bin/env bun index.js
 Restart=always
 RestartSec=5
 EnvironmentFile=/root/comfibeats/.env
