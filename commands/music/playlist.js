@@ -65,9 +65,6 @@ module.exports = {
     const config = await getConfig();
     const shuffleEnabled =
       config[interaction.guild.id]?.settings?.shuffle === true;
-    if (shuffleEnabled) {
-      shuffleArray(playlist);
-    }
 
     await interaction.reply(
       `Starting playlist: \`${playlistName}\` with ${playlist.length} songs. (Looping enabled${
@@ -94,6 +91,10 @@ function startMusicPlayback(
   playlist,
   shuffleEnabled = false,
 ) {
+  if (shuffleEnabled) {
+    shuffleArray(playlist);
+  }
+
   // Stop existing player if it exists
   const existingQueue = interaction.client.musicQueue?.get(
     interaction.guild.id,
