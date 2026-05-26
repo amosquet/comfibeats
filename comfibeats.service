@@ -1,0 +1,16 @@
+[Unit]
+Description=Comfi Beats Discord Bot
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/root/comfibeats
+ExecStart=/usr/bin/bun index.js
+Restart=always
+RestartSec=5
+EnvironmentFile=/root/comfibeats/.env
+
+[Install]
+WantedBy=multi-user.target
