@@ -2,7 +2,18 @@
 
 Instructions for setting up and managing the Comfi Beats Discord bot as a systemd service on a Proxmox Arch container (running as root).
 
-## Installation
+## Installation (Automated)
+
+The easiest way to set everything up is using the provided script:
+
+```bash
+chmod +x setup_service.sh
+./setup_service.sh
+```
+
+## Installation (Manual)
+
+If you prefer to do it manually:
 
 1.  **Sync the dependencies:**
     ```bash
