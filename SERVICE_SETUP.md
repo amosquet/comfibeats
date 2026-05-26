@@ -39,6 +39,8 @@ Instructions for setting up and managing the Comfi Beats Discord bot as a system
   ./update_comfibeats.sh
   ```
 
+  Alternatively, if you are the bot owner, you can trigger the update directly from Discord using the `/update` slash command.
+
 - **Check Status:**
   ```bash
   systemctl status comfibeats.service

@@ -15,7 +15,11 @@ git pull
 echo "📦 Syncing environment with bun..."
 bun install
 
-# 3. Restart the service
+# 3. Deploy slash commands
+echo "🚀 Deploying slash commands..."
+bun deploy-commands.js
+
+# 4. Restart the service
 echo "🔄 Restarting comfibeats.service..."
 systemctl restart comfibeats.service
 
