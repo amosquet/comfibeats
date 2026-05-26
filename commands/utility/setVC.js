@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { getConfig, saveConfig } = require("../../utils/configManager");
 const Sentry = require("@sentry/bun");
+const { checkModPermission } = require("../../utils/permissions");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -13,6 +14,9 @@ module.exports = {
         .setRequired(true),
     ),
   async execute(interaction) {
+    if (!(await checkModPermission(interaction))) {
+      return interaction.reply({ content: "You do not have permission to use this command.", ephemeral: true });
+    }
     const channelId = interaction.options.getString("channelid");
     const guildId = interaction.guild.id;
 

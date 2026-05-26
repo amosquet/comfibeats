@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require("discord.js");
 const { joinVoiceChannel } = require("@discordjs/voice");
 const { getConfig } = require("../../utils/configManager");
 const Sentry = require("@sentry/bun");
+const { checkModPermission } = require("../../utils/permissions");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,6 +17,9 @@ module.exports = {
         .setRequired(false),
     ),
   async execute(interaction) {
+    if (!(await checkModPermission(interaction))) {
+      return interaction.reply({ content: "You do not have permission to use this command.", ephemeral: true });
+    }
     const config = await getConfig();
     let channelId = interaction.options.getString("channelid");
     // set channel id from config if none specified

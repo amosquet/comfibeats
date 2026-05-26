@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, PermissionsBitField } = require("discord.js");
 const { getConfig, saveConfig } = require("../../utils/configManager");
 const Sentry = require("@sentry/bun");
 
@@ -59,6 +59,29 @@ module.exports = {
     }
     if (!config[guildId].settings) {
       config[guildId].settings = {};
+    }
+
+    // Check permissions if trying to change settings
+    const isTryingToChange =
+      interaction.options.getString("defaultplaylist") !== null ||
+      interaction.options.getBoolean("shuffle") !== null ||
+      interaction.options.getBoolean("repeat") !== null ||
+      interaction.options.getBoolean("autovc") !== null ||
+      interaction.options.getBoolean("autoplay") !== null ||
+      interaction.options.getString("vcid") !== null;
+
+    if (isTryingToChange) {
+      const modRoleId = config[guildId].roles?.modRole;
+      const member = interaction.member;
+      const hasAdmin = member.permissions.has(PermissionsBitField.Flags.Administrator) || member.permissions.has(PermissionsBitField.Flags.ManageGuild);
+      const hasModRole = modRoleId ? member.roles.cache.has(modRoleId) : false;
+
+      if (!hasAdmin && !hasModRole) {
+        return interaction.reply({
+          content: "You do not have permission to change bot settings. You need the designated Mod Role or Administrator permissions.",
+          ephemeral: true,
+        });
+      }
     }
 
     // get settings from interaction

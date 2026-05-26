@@ -3,6 +3,7 @@ const fs = require("node:fs/promises");
 const { existsSync } = require("node:fs");
 const path = require("node:path");
 const Sentry = require("@sentry/bun");
+const { checkModPermission } = require("../../utils/permissions");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -23,6 +24,9 @@ module.exports = {
         .setRequired(false),
     ),
   async execute(interaction) {
+    if (!(await checkModPermission(interaction))) {
+      return interaction.reply({ content: "You do not have permission to use this command.", ephemeral: true });
+    }
     const playlistName = interaction.options.getString("name");
     const folder = interaction.options.getString("folder");
     const audioPath = folder

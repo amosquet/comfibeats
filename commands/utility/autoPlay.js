@@ -5,12 +5,16 @@ const path = require("node:path");
 const { startMusicPlayback } = require("../music/playlist.js");
 const { getConfig } = require("../../utils/configManager");
 const Sentry = require("@sentry/bun");
+const { checkModPermission } = require("../../utils/permissions");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("autoplay")
     .setDescription("Automatically plays the default playlist or all tracks."),
   async execute(interaction) {
+    if (!(await checkModPermission(interaction))) {
+      return interaction.reply({ content: "You do not have permission to use this command.", ephemeral: true });
+    }
     const guildId = interaction.guild.id;
     let playlist = [];
     let playlistName = "";

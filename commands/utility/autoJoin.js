@@ -2,12 +2,16 @@ const { SlashCommandBuilder } = require("discord.js");
 const { joinVoiceChannel } = require("@discordjs/voice");
 const { getConfig, saveConfig } = require("../../utils/configManager");
 const Sentry = require("@sentry/bun");
+const { checkModPermission } = require("../../utils/permissions");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("autojoin")
     .setDescription("Toggles auto-join for the default voice channel."),
   async execute(interaction) {
+    if (!(await checkModPermission(interaction))) {
+      return interaction.reply({ content: "You do not have permission to use this command.", ephemeral: true });
+    }
     const guildId = interaction.guild.id;
     const config = await getConfig();
 

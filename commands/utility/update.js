@@ -23,7 +23,7 @@ module.exports = {
       });
     }
 
-    await interaction.reply("📥 Starting update... Pulling latest changes and restarting service.");
+    await interaction.reply("🔄 Pulling updates and restarting...");
 
     // Run the update script
     // We execute it in the background/asynchronously and let it restart the service.
