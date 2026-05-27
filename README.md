@@ -1,23 +1,49 @@
 # comfibeats
 
-Hello! I got tired of the bot that we were using, that I chose to use, that kept crashing and I didn't want to figure out how it worked, so I made my own.
-Feel free to use this to run your own bot, it works if your system has good resources, idk how to make it more efficient yet. I'll work on it.
+A custom Discord music bot built with [Bun](https://bun.com) and discord.js, designed to be reliable, customizable, and easy to self-host.
 
+## Features
 
-To install dependencies:
+- **Music Playback:** Play music, shuffle, stop, and manage queues.
+- **Custom Playlists:** Create and play JSON-based playlists generated directly from local audio files.
+- **Auto-Join & Auto-Play:** Configurable settings to automatically join a designated Voice Channel and start playing a default playlist.
+- **Per-Guild Settings:** Customize behavior per server, including auto-play, default playlists, and shuffle/repeat options.
+- **Self-Updating:** Includes a `/update` command and scripts to pull the latest changes from GitHub and restart the bot automatically.
+- **Systemd Service Support:** Comes with setup scripts for easy deployment as a background service on Linux.
 
-```bash
-bun install
-```
+## Setup
 
-To run:
+1. **Install dependencies:**
 
-```bash
-bun run index.js
-```
+   ```bash
+   bun install
+   ```
 
-This project was created using `bun init` in bun v1.3.4. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+2. **Configuration:**
+   - Copy `.env.EXAMPLE` to `.env` and fill in your `DISCORD_AUTH` token and `CLIENT_ID`.
+   - Copy `guild_settings.json.example` to `guild_settings.json` and configure your server ID, roles, and default settings.
 
+3. **Run the bot:**
+   ```bash
+   bun run index.js
+   ```
 
-Little note to self. I want to make some easy deployment script for self-hosting. I kinda want to use Alpine Linux, just because. (actually might not need this, lol)
-Make sure to set ``DISCORD_AUTH`` and ``CLIENT_ID`` in ``.env``, and ``guildId`` in ``config.json``
+## Deployment (Systemd Service)
+
+For self-hosting on Linux, you can install comfibeats as a systemd service.
+
+- Run the automated setup script:
+  ```bash
+  chmod +x setup_service.sh
+  ./setup_service.sh
+  ```
+- See [SERVICE_SETUP.md](SERVICE_SETUP.md) for more detailed instructions on manual setup and service management.
+
+## Commands
+
+- **Music:** `/play`, `/playlist`, `/shuffle`, `/stop`
+- **Utility:** `/settings`, `/generateplaylist`, `/joinVC`, `/leaveVC`, `/update`
+
+---
+
+_Created because I wanted a bot that doesn't crash. (Currently hosted on an Arch Linux container.)_
