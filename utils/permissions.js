@@ -11,13 +11,18 @@ async function checkModPermission(interaction) {
 
   const guildId = interaction.guild.id;
   const config = await getConfig();
-  const modRoleId = config[guildId]?.roles?.modRole;
+  const modRole = config[guildId]?.roles?.modRole;
   const member = interaction.member;
 
   const hasAdmin =
     member.permissions.has(PermissionsBitField.Flags.Administrator) ||
     member.permissions.has(PermissionsBitField.Flags.ManageGuild);
-  const hasModRole = modRoleId ? member.roles.cache.has(modRoleId) : false;
+    
+  let hasModRole = false;
+  if (modRole) {
+    const modRolesArray = Array.isArray(modRole) ? modRole : [modRole];
+    hasModRole = modRolesArray.some(roleId => member.roles.cache.has(roleId));
+  }
 
   return hasAdmin || hasModRole;
 }

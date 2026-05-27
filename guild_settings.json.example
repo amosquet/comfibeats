@@ -2,7 +2,7 @@
     "guildId_here": {
         "guildName": "guildName_here",
         "roles": {
-            "modRole": "modRoleID_here"
+            "modRole": "modRoleID_here_OR_array_of_strings_like_[\"id1\", \"id2\"]"
         },
         "channels": {
             "logChannel": "logChannelID_here"

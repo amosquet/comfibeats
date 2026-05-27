@@ -9,6 +9,7 @@ const path = require("node:path");
 const { existsSync } = require("node:fs");
 const { getConfig } = require("../../utils/configManager");
 const Sentry = require("@sentry/bun");
+const { findAudioFile } = require("../../utils/fileSearch");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -31,11 +32,11 @@ module.exports = {
       );
     }
 
-    const filePath = path.join(__dirname, "../../audio", filename);
+    const filePath = findAudioFile(filename);
 
-    if (!existsSync(filePath)) {
+    if (!filePath) {
       return interaction.reply(
-        `Could not find file: \`${filename}\` in the audio directory.`,
+        `Could not find file: \`${filename}\` in the audio directory or its subfolders.`,
       );
     }
 

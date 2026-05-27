@@ -12,6 +12,7 @@ const fs = require("node:fs/promises");
 const { existsSync } = require("node:fs");
 const { getConfig } = require("../../utils/configManager");
 const Sentry = require("@sentry/bun");
+const { findAudioFile } = require("../../utils/fileSearch");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -166,9 +167,9 @@ function startMusicPlayback(
     }
 
     const filename = currentQueue.songs[currentQueue.index];
-    const filePath = path.join(__dirname, "../../audio", filename);
+    const filePath = findAudioFile(filename);
 
-    if (existsSync(filePath)) {
+    if (filePath) {
       const resource = createAudioResource(filePath);
       player.play(resource);
     } else {
