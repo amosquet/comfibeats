@@ -128,13 +128,30 @@ function startMusicPlayback(
         "Transient network drop detected. Connection is recovering...",
       );
     } catch (error) {
-      Sentry.captureException(error);
-      console.log(
-        "Voice connection permanently lost. Destroying connection and clearing queue.",
-      );
-      player.stop();
-      connection.destroy();
-      interaction.client.musicQueue?.delete(interaction.guild.id);
+      console.log("Voice connection lost. Attempting to reconnect...");
+      const reconnect = async (attempts = 0) => {
+        if (attempts >= 36) {
+          console.log("Voice connection permanently lost after 3 minutes. Destroying connection and clearing queue.");
+          player.stop();
+          try { connection.destroy(); } catch(e) {}
+          interaction.client.musicQueue?.delete(interaction.guild.id);
+          return;
+        }
+
+        try {
+          console.log(`Reconnection attempt ${attempts + 1}...`);
+          connection.rejoin();
+          await Promise.race([
+            entersState(connection, VoiceConnectionStatus.Signalling, 5000),
+            entersState(connection, VoiceConnectionStatus.Connecting, 5000),
+          ]);
+          console.log("Successfully reconnected to voice channel.");
+        } catch (err) {
+          setTimeout(() => reconnect(attempts + 1), 5000);
+        }
+      };
+
+      reconnect();
     }
   });
 

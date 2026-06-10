@@ -4,6 +4,8 @@ const {
   createAudioPlayer,
   createAudioResource,
   AudioPlayerStatus,
+  VoiceConnectionStatus,
+  entersState,
 } = require("@discordjs/voice");
 const path = require("node:path");
 const { existsSync } = require("node:fs");
@@ -55,6 +57,40 @@ module.exports = {
 
       const player = createAudioPlayer();
       connection.subscribe(player);
+
+      connection.on(VoiceConnectionStatus.Disconnected, async () => {
+        try {
+          await Promise.race([
+            entersState(connection, VoiceConnectionStatus.Signalling, 5000),
+            entersState(connection, VoiceConnectionStatus.Connecting, 5000),
+          ]);
+        } catch (error) {
+          console.log("Voice connection lost in play.js. Attempting to reconnect...");
+          const reconnect = async (attempts = 0) => {
+            if (attempts >= 36) {
+              console.log("Voice connection permanently lost after 3 minutes. Clearing queue.");
+              player.stop();
+              try { connection.destroy(); } catch(e) {}
+              interaction.client.musicQueue?.delete(guildId);
+              return;
+            }
+
+            try {
+              console.log(`Reconnection attempt ${attempts + 1}...`);
+              connection.rejoin();
+              await Promise.race([
+                entersState(connection, VoiceConnectionStatus.Signalling, 5000),
+                entersState(connection, VoiceConnectionStatus.Connecting, 5000),
+              ]);
+              console.log("Successfully reconnected to voice channel.");
+            } catch (err) {
+              setTimeout(() => reconnect(attempts + 1), 5000);
+            }
+          };
+
+          reconnect();
+        }
+      });
 
       const playResource = () => {
         const resource = createAudioResource(filePath);
