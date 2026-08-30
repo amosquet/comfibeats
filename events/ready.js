@@ -1,112 +1,136 @@
-const { Events } = require("discord.js");
-const { joinVoiceChannel } = require("@discordjs/voice");
-const { getConfig } = require("../utils/configManager");
-const { startMusicPlayback } = require("../commands/music/playlist");
-const path = require("node:path");
-const fs = require("node:fs/promises");
-const { existsSync } = require("node:fs");
-const Sentry = require("@sentry/bun");
+const { Events } = require('discord.js');
+const { joinVoiceChannel } = require('@discordjs/voice');
+const { getConfig } = require('../utils/configManager');
+const { GuildQueue } = require('../structures/GuildQueue');
+const path = require('node:path');
+const fs = require('node:fs/promises');
+const { existsSync } = require('node:fs');
+const Sentry = require('@sentry/bun');
 
 module.exports = {
-  name: Events.ClientReady,
-  once: true,
-  async execute(client) {
-    console.log(`Ready! Logged in as ${client.user.tag}`);
+	name: Events.ClientReady,
+	once: true,
+	async execute(client) {
+		console.log(`Ready! Logged in as ${client.user.tag}`);
 
-    // Load config using the shared utility
-    const config = await getConfig();
+		let config;
+		try {
+			config = await getConfig();
+		}
+		catch (err) {
+			if (process.env.SENTRY_DSN) Sentry.captureException(err);
+			console.error('Failed to load guild configurations on startup:', err);
+			return;
+		}
 
-    // Iterate over guilds in config
-    for (const guildId in config) {
-      const guildConfig = config[guildId];
-      if (
-        guildConfig &&
-        guildConfig.settings &&
-        guildConfig.settings.autoVC &&
-        guildConfig.settings.vcId
-      ) {
-        const guild = client.guilds.cache.get(guildId);
-        if (guild) {
-          try {
-            const channel = guild.channels.cache.get(guildConfig.settings.vcId);
-            if (!channel) {
-              console.error(
-                `Could not find channel ${guildConfig.settings.vcId} in guild ${guild.name}`,
-              );
-              continue;
-            }
+		if (!config || typeof config !== 'object') return;
 
-            // Join the voice channel
-            joinVoiceChannel({
-              channelId: channel.id,
-              guildId: guildId,
-              adapterCreator: guild.voiceAdapterCreator,
-            });
-            console.log(
-              `Auto-joined voice channel ${channel.name} in guild ${guild.name} (${guildId})`,
-            );
+		for (const guildId of Object.keys(config)) {
+			const guildConfig = config[guildId];
+			if (
+				!guildConfig ||
+        !guildConfig.settings ||
+        !guildConfig.settings.autoVC ||
+        !guildConfig.settings.vcId
+			) {
+				continue;
+			}
 
-            // Trigger auto-play if configured
-            if (
-              guildConfig.settings.autoPlay &&
-              guildConfig.settings.defaultPlaylist
-            ) {
-              const playlistName = guildConfig.settings.defaultPlaylist;
-              const playlistFile = playlistName.endsWith(".json")
-                ? playlistName
-                : `${playlistName}.json`;
-              const playlistPath = path.join(
-                __dirname,
-                "../playlists",
-                playlistFile,
-              );
+			const guild = client.guilds.cache.get(guildId);
+			if (!guild) continue;
 
-              if (existsSync(playlistPath)) {
-                try {
-                  const data = await fs.readFile(playlistPath, "utf8");
-                  const playlist = JSON.parse(data);
+			try {
+				const channel = guild.channels.cache.get(guildConfig.settings.vcId);
+				if (!channel || !channel.isVoiceBased()) {
+					console.error(
+						`Could not find valid voice channel ${guildConfig.settings.vcId} in guild ${guild.name}`,
+					);
+					continue;
+				}
 
-                  if (Array.isArray(playlist) && playlist.length > 0) {
-                    console.log(
-                      `Auto-playing playlist: ${playlistName} in ${guild.name}`,
-                    );
+				// Clean up any stale existing queue before starting
+				const existingQueue =
+          client.musicQueues?.get(guildId) || client.musicQueue?.get(guildId);
+				if (existingQueue) {
+					if (typeof existingQueue.destroy === 'function') {
+						existingQueue.destroy();
+					}
+					else if (existingQueue.player) {
+						existingQueue.player.stop(true);
+					}
+				}
 
-                    // Create a mock interaction-like object for startMusicPlayback
-                    const mockInteraction = {
-                      guild: guild,
-                      client: client,
-                      member: { voice: { channel: channel } },
-                    };
+				const autoPlayEnabled = Boolean(guildConfig.settings.autoPlay);
+				const defaultPlaylist = guildConfig.settings.defaultPlaylist;
 
-                    startMusicPlayback(
-                      mockInteraction,
-                      channel,
-                      playlist,
-                      guildConfig.settings.shuffle || false,
-                    );
-                  }
-                } catch (err) {
-                  Sentry.captureException(err);
-                  console.error(
-                    `Error parsing auto-play playlist for ${guild.name}:`,
-                    err,
-                  );
-                }
-              } else {
-                console.warn(
-                  `Auto-play failed: Playlist file ${playlistFile} not found.`,
-                );
-              }
-            }
-          } catch (error) {
-            Sentry.captureException(error);
-            console.error(
-              `Failed to auto-join or auto-play in guild ${guildId}:`,
-              error,
-            );
-          }
-        }
-      }
-    }
-  },
+				// If autoPlay is enabled with a default playlist, let GuildQueue manage the connection
+				if (autoPlayEnabled && defaultPlaylist) {
+					const safePlaylistName = path.basename(
+						defaultPlaylist.endsWith('.json')
+							? defaultPlaylist
+							: `${defaultPlaylist}.json`,
+					);
+					const playlistPath = path.resolve(
+						__dirname,
+						'../playlists',
+						safePlaylistName,
+					);
+
+					if (existsSync(playlistPath)) {
+						try {
+							const data = await fs.readFile(playlistPath, 'utf8');
+							const songs = JSON.parse(data);
+
+							if (Array.isArray(songs) && songs.length > 0) {
+								console.log(
+									`Auto-playing playlist: ${defaultPlaylist} in ${guild.name} (${channel.name})`,
+								);
+								const shuffleEnabled = Boolean(guildConfig.settings.shuffle);
+								const queue = new GuildQueue(guild, null, channel);
+								queue.setPlaylist(songs, shuffleEnabled);
+								if (client.musicQueues) client.musicQueues.set(guildId, queue);
+								if (client.musicQueue) client.musicQueue.set(guildId, queue);
+								await queue.play();
+								continue;
+							}
+							else {
+								console.warn(
+									`Auto-play playlist ${defaultPlaylist} is empty in ${guild.name}. Joining VC only.`,
+								);
+							}
+						}
+						catch (err) {
+							if (process.env.SENTRY_DSN) Sentry.captureException(err);
+							console.error(
+								`Error reading auto-play playlist for ${guild.name}:`,
+								err,
+							);
+						}
+					}
+					else {
+						console.warn(
+							`Auto-play failed: Playlist file ${safePlaylistName} not found. Joining VC only.`,
+						);
+					}
+				}
+
+				// AutoVC only: join voice channel without redundant handshakes (VOICE-MED-04)
+				joinVoiceChannel({
+					channelId: channel.id,
+					guildId: guild.id,
+					adapterCreator: guild.voiceAdapterCreator,
+				});
+				console.log(
+					`Auto-joined voice channel ${channel.name} in guild ${guild.name} (${guildId})`,
+				);
+			}
+			catch (error) {
+				if (process.env.SENTRY_DSN) Sentry.captureException(error);
+				console.error(
+					`Failed to auto-join or auto-play in guild ${guildId}:`,
+					error,
+				);
+			}
+		}
+	},
 };

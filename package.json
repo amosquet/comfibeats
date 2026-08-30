@@ -1,14 +1,23 @@
 {
   "name": "comfibeats",
-  "module": "index.ts",
-  "type": "module",
+  "version": "1.0.0",
   "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "bun index.js",
+    "start:node": "node index.js",
+    "deploy": "bun deploy-commands.js",
+    "lint": "eslint .",
+    "test": "bun test",
+    "pretranscode": "bun scripts/pre-transcode.js"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "bun": ">=1.0.0"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "eslint": "^9.39.1"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
   },
   "dependencies": {
     "@discordjs/opus": "^0.10.0",
@@ -18,6 +27,7 @@
     "discord.js": "^14.25.1",
     "ffmpeg-static": "^5.3.0",
     "libsodium-wrappers": "^0.7.15",
+    "opusscript": "^0.1.1",
     "sodium-native": "^5.0.10"
   }
 }

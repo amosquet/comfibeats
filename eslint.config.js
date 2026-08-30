@@ -1,6 +1,9 @@
 const js = require('@eslint/js');
 
 module.exports = [
+	{
+		ignores: ['.agents/**', 'node_modules/**', 'dist/**'],
+	},
 	js.configs.recommended,
 	{
 		languageOptions: {

@@ -20,13 +20,14 @@ for (const folder of commandFolders) {
 		const command = require(filePath);
 		if ('data' in command && 'execute' in command) {
 			commands.push(command.data.toJSON());
-		} else {
+		}
+		else {
 			console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
 		}
 	}
 }
 
-//pull all guild IDs from guild_settings.json
+// pull all guild IDs from guild_settings.json
 const guildSettingsPath = path.join(__dirname, 'guild_settings.json');
 const guildSettings = JSON.parse(fs.readFileSync(guildSettingsPath, 'utf8'));
 const guildIds = Object.keys(guildSettings);
@@ -45,7 +46,8 @@ const rest = new REST().setToken(token);
 			const data = await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
 			console.log(`Successfully reloaded ${data.length} application (/) commands in guild ${guildId}.`);
 		}
-	} catch (error) {
+	}
+	catch (error) {
 		// And of course, make sure you catch and log any errors!
 		console.error(error);
 	}

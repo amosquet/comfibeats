@@ -1,19 +1,19 @@
 {
-    "guildId_here": {
-        "guildName": "guildName_here",
-        "roles": {
-            "modRole": "modRoleID_here_OR_array_of_strings_like_[\"id1\", \"id2\"]"
-        },
-        "channels": {
-            "logChannel": "logChannelID_here"
-        },
-        "settings": {
-            "defaultPlaylist": "example",
-            "shuffle": true,
-            "repeat": true,
-            "autoVC": true,
-            "autoPlay": true,
-            "vcId": "defaultVoiceChannelID_here"
-        }
+  "YOUR_GUILD_ID_HERE": {
+    "guildName": "Example Guild",
+    "roles": {
+      "modRole": "MOD_ROLE_ID"
+    },
+    "channels": {
+      "logChannel": "LOG_CHANNEL_ID"
+    },
+    "settings": {
+      "defaultPlaylist": "default",
+      "shuffle": true,
+      "repeat": true,
+      "autoVC": true,
+      "autoPlay": true,
+      "vcId": "VOICE_CHANNEL_ID"
     }
+  }
 }

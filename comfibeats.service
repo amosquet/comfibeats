@@ -4,14 +4,24 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
-Group=root
-WorkingDirectory=/root/comfibeats
-Environment="PATH=/root/.bun/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=/usr/bin/env bun index.js
+User=comfibeats
+Group=comfibeats
+WorkingDirectory=/opt/comfibeats
+Environment="PATH=/home/comfibeats/.bun/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/comfibeats/.bun/bin/bun index.js
 Restart=always
 RestartSec=5
-EnvironmentFile=/root/comfibeats/.env
+EnvironmentFile=/opt/comfibeats/.env
+
+# Security Sandboxing
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/comfibeats/playlists /opt/comfibeats/audio /opt/comfibeats/guild_settings.json
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictRealtime=true
 
 [Install]
 WantedBy=multi-user.target

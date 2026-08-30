@@ -1,229 +1,130 @@
-const { SlashCommandBuilder } = require("discord.js");
-const {
-  joinVoiceChannel,
-  createAudioPlayer,
-  createAudioResource,
-  AudioPlayerStatus,
-  VoiceConnectionStatus,
-  entersState,
-} = require("@discordjs/voice");
-const path = require("node:path");
-const fs = require("node:fs/promises");
-const { existsSync } = require("node:fs");
-const { getConfig } = require("../../utils/configManager");
-const Sentry = require("@sentry/bun");
-const { findAudioFile } = require("../../utils/fileSearch");
+const { SlashCommandBuilder } = require('discord.js');
+const path = require('node:path');
+const fs = require('node:fs/promises');
+const { existsSync } = require('node:fs');
+const { getConfig } = require('../../utils/configManager');
+const { checkVoiceProximity } = require('../../utils/permissions');
+const { GuildQueue } = require('../../structures/GuildQueue');
+const Sentry = require('@sentry/bun');
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName("playlist")
-    .setDescription("Plays a playlist from the playlists folder")
-    .addStringOption((option) =>
-      option
-        .setName("name")
-        .setDescription("The name of the playlist file (e.g. myplaylist.json)")
-        .setRequired(true),
-    ),
-  async execute(interaction) {
-    let playlistName = interaction.options.getString("name");
-    let channel = interaction.member.voice.channel;
-    if (!channel) {
-      channel = interaction.guild.members.me.voice.channel;
-    }
+	data: new SlashCommandBuilder()
+		.setName('playlist')
+		.setDescription('Plays a playlist from the playlists folder')
+		.addStringOption((option) =>
+			option
+				.setName('name')
+				.setDescription('The name of the playlist file (e.g. myplaylist.json)')
+				.setRequired(true),
+		),
+	async execute(interaction) {
+		const proximity = checkVoiceProximity(interaction);
+		if (!proximity.allowed) {
+			return interaction.reply({ content: proximity.message, ephemeral: true });
+		}
 
-    if (!channel) {
-      return interaction.reply(
-        "You need to be in a voice channel to play music!",
-      );
-    }
+		const rawPlaylistName = interaction.options.getString('name', true);
+		const playlistDir = path.resolve(__dirname, '../../playlists');
+		const sanitizedName = path.basename(
+			rawPlaylistName.endsWith('.json') ? rawPlaylistName : `${rawPlaylistName}.json`,
+		);
+		const playlistPath = path.resolve(playlistDir, sanitizedName);
 
-    if (!playlistName.endsWith(".json")) {
-      playlistName += ".json";
-    }
+		const rel = path.relative(playlistDir, playlistPath);
+		if (rel.startsWith('..') || path.isAbsolute(rel)) {
+			return interaction.reply({
+				content: 'Invalid playlist name specified.',
+				ephemeral: true,
+			});
+		}
 
-    const playlistPath = path.join(__dirname, "../../playlists", playlistName);
+		if (!existsSync(playlistPath)) {
+			return interaction.reply({
+				content: `Could not find playlist: \`${sanitizedName}\` in the playlists directory.`,
+				ephemeral: true,
+			});
+		}
 
-    if (!existsSync(playlistPath)) {
-      return interaction.reply(
-        `Could not find playlist: \`${playlistName}\` in the playlists directory.`,
-      );
-    }
+		let playlist;
+		try {
+			const data = await fs.readFile(playlistPath, 'utf8');
+			playlist = JSON.parse(data);
+		}
+		catch (error) {
+			if (Sentry && typeof Sentry.captureException === 'function') {
+				Sentry.captureException(error);
+			}
+			console.error('[playlist.js] Error parsing playlist:', error);
+			return interaction.reply({
+				content: 'The requested playlist file could not be parsed.',
+				ephemeral: true,
+			});
+		}
 
-    let playlist;
-    try {
-      const data = await fs.readFile(playlistPath, "utf8");
-      playlist = JSON.parse(data);
-    } catch (error) {
-      Sentry.captureException(error);
-      return interaction.reply(`Error parsing playlist: ${error.message}`);
-    }
+		if (!Array.isArray(playlist) || playlist.length === 0) {
+			return interaction.reply({
+				content: 'Playlist is empty or invalid.',
+				ephemeral: true,
+			});
+		}
 
-    if (!Array.isArray(playlist) || playlist.length === 0) {
-      return interaction.reply("Playlist is empty or invalid.");
-    }
+		// Check shuffle setting from config
+		let shuffleEnabled = false;
+		try {
+			const config = await getConfig();
+			shuffleEnabled = config[interaction.guild.id]?.settings?.shuffle === true;
+		}
+		catch (err) {
+			console.error('[playlist.js] Error reading config for shuffle:', err);
+		}
 
-    // Check shuffle setting
-    const config = await getConfig();
-    const shuffleEnabled =
-      config[interaction.guild.id]?.settings?.shuffle === true;
+		await interaction.reply(
+			`Starting playlist: \`${sanitizedName}\` with ${playlist.length} songs. (Looping enabled${
+				shuffleEnabled ? ', Shuffle enabled' : ''
+			})`,
+		);
 
-    await interaction.reply(
-      `Starting playlist: \`${playlistName}\` with ${playlist.length} songs. (Looping enabled${
-        shuffleEnabled ? ", Shuffle enabled" : ""
-      })`,
-    );
-
-    startMusicPlayback(interaction, channel, playlist, shuffleEnabled);
-  },
-  startMusicPlayback,
+		startMusicPlayback(interaction, proximity.channel, playlist, shuffleEnabled);
+	},
+	startMusicPlayback,
 };
 
-function shuffleArray(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
-}
-
 function startMusicPlayback(
-  interaction,
-  channel,
-  playlist,
-  shuffleEnabled = false,
+	interaction,
+	channel,
+	playlist,
+	shuffleEnabled = false,
 ) {
-  if (shuffleEnabled) {
-    shuffleArray(playlist);
-  }
+	const guild = interaction.guild;
+	const guildId = guild.id;
+	const client = interaction.client;
 
-  // Stop existing player if it exists
-  const existingQueue = interaction.client.musicQueue?.get(
-    interaction.guild.id,
-  );
-  if (existingQueue) {
-    existingQueue.player.stop();
-  }
+	// Clean up existing player and listeners before starting new queue
+	const existingQueue = client.musicQueue?.get(guildId);
+	if (existingQueue) {
+		if (typeof existingQueue.destroy === 'function') {
+			existingQueue.destroy();
+		}
+		else if (existingQueue.player) {
+			existingQueue.player.removeAllListeners();
+			existingQueue.player.stop(true);
+			client.musicQueue.delete(guildId);
+		}
+	}
 
-  const connection = joinVoiceChannel({
-    channelId: channel.id,
-    guildId: interaction.guild.id,
-    adapterCreator: interaction.guild.voiceAdapterCreator,
-  });
+	if (!client.musicQueue) {
+		client.musicQueue = new Map();
+	}
 
-  const player = createAudioPlayer();
-  connection.subscribe(player);
+	const textChannel = interaction.channel || interaction.textChannel;
+	const queue = new GuildQueue(guild, textChannel, channel);
+	client.musicQueue.set(guildId, queue);
 
-  connection.on("error", (error) => {
-    Sentry.captureException(error);
-    console.error(`Voice Connection Error: ${error.message}`);
-  });
-
-  connection.on(VoiceConnectionStatus.Disconnected, async () => {
-    try {
-      await Promise.race([
-        entersState(connection, VoiceConnectionStatus.Signalling, 5000),
-        entersState(connection, VoiceConnectionStatus.Connecting, 5000),
-      ]);
-      console.log(
-        "Transient network drop detected. Connection is recovering...",
-      );
-    } catch (error) {
-      console.log("Voice connection lost. Attempting to reconnect...");
-      const reconnect = async (attempts = 0) => {
-        if (attempts >= 36) {
-          console.log("Voice connection permanently lost after 3 minutes. Destroying connection and clearing queue.");
-          player.stop();
-          try { connection.destroy(); } catch(e) {}
-          interaction.client.musicQueue?.delete(interaction.guild.id);
-          return;
-        }
-
-        try {
-          console.log(`Reconnection attempt ${attempts + 1}...`);
-          connection.rejoin();
-          await Promise.race([
-            entersState(connection, VoiceConnectionStatus.Signalling, 5000),
-            entersState(connection, VoiceConnectionStatus.Connecting, 5000),
-          ]);
-          console.log("Successfully reconnected to voice channel.");
-        } catch (err) {
-          setTimeout(() => reconnect(attempts + 1), 5000);
-        }
-      };
-
-      reconnect();
-    }
-  });
-
-  if (!interaction.client.musicQueue) {
-    interaction.client.musicQueue = new Map();
-  }
-
-  const queue = {
-    songs: playlist,
-    index: 0,
-    player: player,
-    connection: connection,
-    shuffleEnabled: shuffleEnabled,
-  };
-  interaction.client.musicQueue.set(interaction.guild.id, queue);
-
-  const playNext = async () => {
-    const currentQueue = interaction.client.musicQueue.get(
-      interaction.guild.id,
-    );
-    if (!currentQueue) return;
-
-    if (currentQueue.index >= currentQueue.songs.length) {
-      currentQueue.index = 0;
-      const config = await getConfig();
-      if (config[interaction.guild.id]?.settings?.shuffle) {
-        shuffleArray(currentQueue.songs);
-        console.log("Playlist looped and reshuffled.");
-      }
-    }
-
-    const filename = currentQueue.songs[currentQueue.index];
-    const filePath = findAudioFile(filename);
-
-    if (filePath) {
-      const resource = createAudioResource(filePath);
-      player.play(resource);
-    } else {
-      console.log(`File not found: ${filename}, skipping.`);
-      currentQueue.index++;
-      if (currentQueue.index < currentQueue.songs.length) {
-        playNext();
-      } else {
-        console.log("No valid files found in playlist.");
-        player.stop();
-        connection.destroy();
-        interaction.client.musicQueue.delete(interaction.guild.id);
-      }
-    }
-  };
-
-  player.on(AudioPlayerStatus.Idle, () => {
-    const currentQueue = interaction.client.musicQueue.get(
-      interaction.guild.id,
-    );
-    if (currentQueue) {
-      currentQueue.index++;
-      playNext();
-    }
-  });
-
-  player.on("error", (error) => {
-    Sentry.captureException(error);
-    console.error(`Audio Player Error: ${error.message}`);
-    const currentQueue = interaction.client.musicQueue.get(
-      interaction.guild.id,
-    );
-    if (currentQueue) {
-      currentQueue.index++;
-      playNext();
-    }
-  });
-
-  playNext();
+	queue.setPlaylist(playlist, shuffleEnabled, false);
+	queue.play().catch((err) => {
+		if (Sentry && typeof Sentry.captureException === 'function') {
+			Sentry.captureException(err);
+		}
+		console.error('[playlist.js] Error in queue.play():', err);
+	});
 }
